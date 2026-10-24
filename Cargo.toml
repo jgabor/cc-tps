@@ -2,6 +2,9 @@
 name = "cc-tps"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+description = "Tokens per second across all local Claude Code sessions, as a status line segment"
+repository = "https://github.com/jgabor/cc-tps"
 
 [dependencies]
 clap = { version = "4.6.7", features = ["derive"] }

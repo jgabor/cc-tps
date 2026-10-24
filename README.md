@@ -160,3 +160,7 @@ their recent tail. Measured on one Linux machine with about 1,000 transcripts
 and 6 active sessions, a run takes about 10 ms. Results are cached in
 `$XDG_RUNTIME_DIR/cc-tps/` for `--cache-ttl`, so several sessions refreshing
 at once share one scan; a cached run takes under 1 ms.
+
+## License
+
+cc-tps is released under the [MIT License](LICENSE).
