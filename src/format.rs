@@ -36,9 +36,9 @@ fn kind_label(k: Kind) -> &'static str {
 
 fn rate_label(r: Rate) -> &'static str {
     match r {
-        Rate::Tp => "",
-        Rate::Resp => "resp ",
-        Rate::Active => "active ",
+        Rate::Tps => "",
+        Rate::E2e => "e2e ",
+        Rate::Act => "act ",
     }
 }
 
@@ -63,7 +63,7 @@ pub fn count(n: u64) -> String {
     }
 }
 
-/// Labeled layout: `5m out 124/s · resp 92/s · active 131/s | cache 41.0k/s`.
+/// Labeled layout: `5m out 124/s · e2e 92/s · act 131/s | cache 41.0k/s`.
 pub fn labeled(window_secs: u64, groups: &[Group]) -> String {
     let groups: Vec<String> = groups
         .iter()
@@ -86,9 +86,9 @@ pub fn labeled(window_secs: u64, groups: &[Group]) -> String {
 pub fn compact(rates: &[(Rate, Option<f64>)], kinds: &[Kind], totals: &Totals) -> String {
     let rates = rates.iter().map(|(rate, v)| {
         let key = match rate {
-            Rate::Tp => "tps",
-            Rate::Resp => "e2e",
-            Rate::Active => "act",
+            Rate::Tps => "tps",
+            Rate::E2e => "e2e",
+            Rate::Act => "act",
         };
         match v {
             Some(v) => format!("{key}:{}/s", num(*v)),
@@ -153,27 +153,27 @@ mod tests {
             (
                 Kind::Out,
                 vec![
-                    (Rate::Tp, Some(124.2)),
-                    (Rate::Resp, Some(91.7)),
-                    (Rate::Active, None),
+                    (Rate::Tps, Some(124.2)),
+                    (Rate::E2e, Some(91.7)),
+                    (Rate::Act, None),
                 ],
             ),
-            (Kind::Cache, vec![(Rate::Tp, Some(41_000.0))]),
+            (Kind::Cache, vec![(Rate::Tps, Some(41_000.0))]),
         ];
         assert_eq!(
             labeled(300, &groups),
-            "5m out 124/s · resp 92/s · active – | cache 41.0k/s"
+            "5m out 124/s · e2e 92/s · act – | cache 41.0k/s"
         );
-        let no_tp = vec![(Kind::Out, vec![(Rate::Resp, Some(92.0))])];
-        assert_eq!(labeled(300, &no_tp), "5m out resp 92/s");
+        let no_tps = vec![(Kind::Out, vec![(Rate::E2e, Some(92.0))])];
+        assert_eq!(labeled(300, &no_tps), "5m out e2e 92/s");
     }
 
     #[test]
     fn compact_line() {
         let rates = [
-            (Rate::Tp, Some(116.2)),
-            (Rate::Resp, Some(101.7)),
-            (Rate::Active, None),
+            (Rate::Tps, Some(116.2)),
+            (Rate::E2e, Some(101.7)),
+            (Rate::Act, None),
         ];
         let totals = Totals {
             input: 855_000,
@@ -191,11 +191,7 @@ mod tests {
             cache_hit: None,
         };
         assert_eq!(
-            compact(
-                &[(Rate::Active, Some(3.0))],
-                &[Kind::Cache, Kind::In],
-                &idle
-            ),
+            compact(&[(Rate::Act, Some(3.0))], &[Kind::Cache, Kind::In], &idle),
             "act:3.0/s cache:– in:0"
         );
     }

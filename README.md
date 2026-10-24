@@ -10,7 +10,7 @@ per response, and while any response was in flight.
 
 <pre>
 $ cc-tps
-5m out 31/s · resp 90/s · active 90/s
+5m out 31/s · e2e 90/s · act 90/s
 </pre>
 
 Compact: space-separated `key:value` pairs, which suit a status line built
@@ -26,13 +26,13 @@ Pick and order rates and token kinds:
 
 <pre>
 $ cc-tps --tokens out,cache
-5m out 31/s · resp 90/s · active 90/s | cache 10.0k/s · resp 29.5k/s · active 29.5k/s
+5m out 31/s · e2e 90/s · act 90/s | cache 10.0k/s · e2e 29.5k/s · act 29.5k/s
 
-$ cc-tps --format compact --rates tp --tokens cache
+$ cc-tps --format compact --rates tps --tokens cache
 tps:31/s cache:99%
 
-$ cc-tps --window 1m --rates tp,active
-1m out 9.3/s · active 72/s
+$ cc-tps --window 1m --rates tps,act
+1m out 9.3/s · act 72/s
 </pre>
 
 With nothing in the window:
@@ -76,17 +76,20 @@ Every figure covers API responses that ended inside the window (default the
 last 5 minutes). A response counts in full even if it started before the
 window.
 
-| Rate     | Label    | Meaning                                                    |
-| -------- | -------- | ---------------------------------------------------------- |
-| `tp`     | none     | Tokens divided by the window length. The overall throughput. |
-| `resp`   | `resp`   | Tokens divided by the summed duration of each response.    |
-| `active` | `active` | Tokens divided by the wall time when any response was in flight. |
+| Rate  | Meaning                                                          |
+| ----- | ---------------------------------------------------------------- |
+| `tps` | Tokens divided by the window length. The overall throughput.     |
+| `e2e` | Tokens divided by the summed end-to-end duration of each response. |
+| `act` | Tokens divided by the wall time when any response was in flight. |
+
+The same names work in `--rates` and appear in the output. The labeled
+layout leaves `tps` unlabeled, since the token kind leads each group.
 
 A response's duration runs from the request (the `api-request` or `user`
 record just before it) to its last content block. It includes time to first
-token, so `resp` is end-to-end speed, not model decode speed. Responses with
-no request record in the 10 minutes before them count for `tp` only. With no
-responses in the window, `tp` shows `0` and the other rates show `–`.
+token, so `e2e` is end-to-end speed, not model decode speed. Responses with
+no request record in the 10 minutes before them count for `tps` only. With no
+responses in the window, `tps` shows `0` and the other rates show `–`.
 
 | Kind    | Labeled (rate)                                          | Compact (window total)                     |
 | ------- | ------------------------------------------------------- | ------------------------------------------ |
@@ -98,7 +101,7 @@ responses in the window, `tp` shows `0` and the other rates show `–`.
 
 ```text
 --window 5m               window: 300, 90s, 5m, 1h
---rates tp,resp,active    rates to show, in order
+--rates tps,e2e,act       rates to show, in order
 --tokens KINDS            kinds to show, in order: out, in, cache
 --format labeled          layout: labeled or compact
 --cache-ttl 2s            reuse the last result this long; 0 turns it off
@@ -112,15 +115,15 @@ Rates per token kind, divided by `·`. `--tokens` defaults to `out`, and each
 kind gets its own group, joined by ` | `:
 
 ```text
-$ cc-tps --rates tp --tokens out,cache
+$ cc-tps --rates tps --tokens out,cache
 5m out 31/s | cache 10.0k/s
 ```
 
 ### Compact
 
-Space-separated `key:value` pairs. The rates always use output tokens (`tps`, `e2e` and `act` are `tp`, `resp` and
-`active`). Then come window figures, one per kind in `--tokens`, which
-defaults to `in,out,cache`: all input tokens, output tokens, and the share
+Space-separated `key:value` pairs. The rates always use output tokens. Then
+come window figures, one per kind in `--tokens`, which defaults to
+`in,out,cache`: all input tokens, output tokens, and the share
 of input read from the cache. The share is rounded down, so `100%` means no
 input missed the cache, and it shows `–` when there was no input. The window
 is not shown.
@@ -141,9 +144,10 @@ than reads.
   long response still streaming is not counted yet. The figure can trail by
   up to one response.
 - Advisor tokens are not counted. If your sessions use the advisor tool, a
-  response that calls it reports the advisor's tokens only in `usage.iterations`, and cc-tps reads
-  the top-level `usage`, which covers the main model alone. Such a response
-  also spans the advisor's run, which lowers `resp` and `active`.
+  response that calls it reports the advisor's tokens only in
+  `usage.iterations`, and cc-tps reads the top-level `usage`, which covers the
+  main model alone. Such a response also spans the advisor's run, which lowers
+  `e2e` and `act`.
 - Only local sessions count, not cloud or remote ones.
 - The transcript format is internal to Claude Code and undocumented. cc-tps
   was built against Claude Code 2.1.308, and a later release can change the

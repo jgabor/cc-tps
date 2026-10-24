@@ -29,12 +29,7 @@ struct Args {
     window: u64,
 
     /// Rates to show, in order.
-    #[arg(
-        long,
-        value_enum,
-        value_delimiter = ',',
-        default_value = "tp,resp,active"
-    )]
+    #[arg(long, value_enum, value_delimiter = ',', default_value = "tps,e2e,act")]
     rates: Vec<Rate>,
 
     /// Token kinds to show, in order. Labeled shows rates per kind (default

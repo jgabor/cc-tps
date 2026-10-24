@@ -5,11 +5,11 @@ use crate::parse::{Response, Tokens};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, clap::ValueEnum)]
 pub enum Rate {
     /// Tokens divided by the window length.
-    Tp,
-    /// Tokens divided by the summed duration of each response.
-    Resp,
+    Tps,
+    /// Tokens divided by the summed end-to-end duration of each response.
+    E2e,
     /// Tokens divided by the wall time when any response was in flight.
-    Active,
+    Act,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, clap::ValueEnum)]
@@ -60,14 +60,14 @@ fn total(resps: &[Response], kind: Kind) -> u64 {
 /// Tokens per second, or `None` when the rate has no time base.
 pub fn rate(resps: &[Response], rate: Rate, kind: Kind, window_ms: i64) -> Option<f64> {
     match rate {
-        Rate::Tp => Some(per_sec(total(resps, kind), window_ms)),
-        Rate::Resp => {
+        Rate::Tps => Some(per_sec(total(resps, kind), window_ms)),
+        Rate::E2e => {
             let (total, ms) = timed(resps)
                 .map(|(s, r)| (kind.of(&r.tokens), r.end - s))
                 .fold((0, 0), |(t, d), (a, b)| (t + a, d + b));
             (ms > 0).then(|| per_sec(total, ms))
         }
-        Rate::Active => {
+        Rate::Act => {
             let total: u64 = timed(resps).map(|(_, r)| kind.of(&r.tokens)).sum();
             let ms = union_len(timed(resps).map(|(s, r)| (s, r.end)).collect());
             (ms > 0).then(|| per_sec(total, ms))
@@ -134,11 +134,11 @@ mod tests {
             r(None, 20_000, 1500),
         ];
         let w = 300_000;
-        assert_eq!(rate(&resps, Rate::Tp, Kind::Out, w), Some(10.0));
-        assert_eq!(rate(&resps, Rate::Resp, Kind::Out, w), Some(75.0));
-        assert_eq!(rate(&resps, Rate::Active, Kind::Out, w), Some(100.0));
-        assert_eq!(rate(&resps, Rate::Tp, Kind::Cache, w), Some(10.0));
-        assert_eq!(rate(&resps, Rate::Resp, Kind::In, w), Some(0.1));
+        assert_eq!(rate(&resps, Rate::Tps, Kind::Out, w), Some(10.0));
+        assert_eq!(rate(&resps, Rate::E2e, Kind::Out, w), Some(75.0));
+        assert_eq!(rate(&resps, Rate::Act, Kind::Out, w), Some(100.0));
+        assert_eq!(rate(&resps, Rate::Tps, Kind::Cache, w), Some(10.0));
+        assert_eq!(rate(&resps, Rate::E2e, Kind::In, w), Some(0.1));
         // Input: 3 uncached + 2970 read + 30 written.
         assert_eq!(
             totals(&resps),
@@ -154,10 +154,10 @@ mod tests {
     #[test]
     fn no_time_base_gives_none() {
         let w = 300_000;
-        assert_eq!(rate(&[], Rate::Tp, Kind::Out, w), Some(0.0));
-        assert_eq!(rate(&[], Rate::Resp, Kind::Out, w), None);
-        assert_eq!(rate(&[], Rate::Active, Kind::Out, w), None);
+        assert_eq!(rate(&[], Rate::Tps, Kind::Out, w), Some(0.0));
+        assert_eq!(rate(&[], Rate::E2e, Kind::Out, w), None);
+        assert_eq!(rate(&[], Rate::Act, Kind::Out, w), None);
         let untimed = [r(None, 1, 5)];
-        assert_eq!(rate(&untimed, Rate::Resp, Kind::Out, w), None);
+        assert_eq!(rate(&untimed, Rate::E2e, Kind::Out, w), None);
     }
 }

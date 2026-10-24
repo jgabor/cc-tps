@@ -98,24 +98,24 @@ fn stdout(o: &Output) -> String {
 #[test]
 fn default_shows_three_output_rates() {
     // In the window: m0 150 (15 s), m1 600 (10 s), m2 310 (5 s), m3 450 (10 s)
-    // and m4 300 (no start). tp = 1810 / 300 s. resp = 1510 / 40 s.
-    // active = 1510 / 35 s, since m1 and m3 overlap.
+    // and m4 300 (no start). tps = 1810 / 300 s. e2e = 1510 / 40 s.
+    // act = 1510 / 35 s, since m1 and m3 overlap.
     let tree = busy();
     assert_eq!(
         stdout(&run(&tree.0, &[])),
-        "5m out 6.0/s · resp 38/s · active 43/s\n"
+        "5m out 6.0/s · e2e 38/s · act 43/s\n"
     );
 }
 
 #[test]
 fn rates_and_tokens_combine_independently() {
     let tree = busy();
-    let o = run(&tree.0, &["--rates", "tp", "--tokens", "out,cache"]);
+    let o = run(&tree.0, &["--rates", "tps", "--tokens", "out,cache"]);
     // Five responses with 1000 cache tokens each over 300 s.
     assert_eq!(stdout(&o), "5m out 6.0/s | cache 17/s\n");
-    let o = run(&tree.0, &["--rates", "active,resp", "--tokens", "in"]);
+    let o = run(&tree.0, &["--rates", "act,e2e", "--tokens", "in"]);
     // Four timed responses with 2 input tokens each.
-    assert_eq!(stdout(&o), "5m in active 0.2/s · resp 0.2/s\n");
+    assert_eq!(stdout(&o), "5m in act 0.2/s · e2e 0.2/s\n");
 }
 
 #[test]
@@ -135,7 +135,7 @@ fn compact_format_shows_output_rates_then_totals() {
             "--format",
             "compact",
             "--rates",
-            "active,tp",
+            "act,tps",
             "--tokens",
             "cache,out",
         ],
@@ -147,8 +147,8 @@ fn compact_format_shows_output_rates_then_totals() {
 fn window_flag_changes_scope_and_label() {
     let tree = busy();
     // 3 minutes back from noon reaches m2 (310, 5 s) and m4 (300, no start).
-    let o = run(&tree.0, &["--window", "180s", "--rates", "tp,resp"]);
-    assert_eq!(stdout(&o), "3m out 3.4/s · resp 62/s\n");
+    let o = run(&tree.0, &["--window", "180s", "--rates", "tps,e2e"]);
+    assert_eq!(stdout(&o), "3m out 3.4/s · e2e 62/s\n");
 }
 
 #[test]
@@ -161,10 +161,7 @@ fn idle_tree_shows_zero_and_dashes() {
             asst("x", &t("10:00:05"), 100),
         ],
     );
-    assert_eq!(
-        stdout(&run(&tree.0, &[])),
-        "5m out 0/s · resp – · active –\n"
-    );
+    assert_eq!(stdout(&run(&tree.0, &[])), "5m out 0/s · e2e – · act –\n");
     assert_eq!(
         stdout(&run(&tree.0, &["--format", "compact"])),
         "tps:0/s e2e:– act:– in:0 out:0 cache:–\n"
@@ -180,7 +177,7 @@ fn color_is_dim_by_default() {
         .args(["--now", NOW])
         .output()
         .unwrap();
-    assert_eq!(stdout(&o), "\x1b[2m5m out 0/s · resp – · active –\x1b[0m\n");
+    assert_eq!(stdout(&o), "\x1b[2m5m out 0/s · e2e – · act –\x1b[0m\n");
 }
 
 #[test]
@@ -214,7 +211,7 @@ fn cache_reuses_the_last_line_within_ttl() {
         let o = Command::new(env!("CARGO_BIN_EXE_cc-tps"))
             .arg("--projects-dir")
             .arg(&tree.0)
-            .args(["--no-color", "--rates", "tp", "--cache-ttl", ttl])
+            .args(["--no-color", "--rates", "tps", "--cache-ttl", ttl])
             .env("XDG_RUNTIME_DIR", &runtime.0)
             .output()
             .unwrap();
